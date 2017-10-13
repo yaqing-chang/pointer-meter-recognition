@@ -1,0 +1,11 @@
+1.首先运行pro-template.py，pro-data用于生成图片模板，
+需要人工协助完成，通过改变中心点的坐标（offset）
+将bp.jpg与zz.jpg合并生成模板图片。
+生成的每一种表盘的图片保存在template文件夹里面，
+template文件夹下面的1、2...为不同种类的表盘，
+每种表盘文件夹下的1、2、3...为该种表盘的不同指示值
+
+2.pro_data.py用于将1中tempalte生成的图片进行变换扩充
+生成更多的图片
+
+3.for_set_bin.py用于将2中的图片生成mnist格式的训练数据集
