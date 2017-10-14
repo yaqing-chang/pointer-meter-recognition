@@ -27,7 +27,7 @@ class Main(Universal_value):
     def __init__(self):
         Universal_value.__init__(self)
         self.itera = 0
-        self.minRadius = 150
+        self.minRadius = 250
         self.maxRadius=int(1.5*self.minRadius)
         self.quene_list()
         for camera_num in range(self.camera_nums):
@@ -40,11 +40,55 @@ class Main(Universal_value):
         for camera_num in range(self.camera_nums):
             exec('self.q_readvideo_%s = multiprocessing.Queue()'%camera_num)
             exec('self.q_pic_%s = multiprocessing.Queue()'%camera_num)
+        self.q_result_socket_db = multiprocessing.Queue(20)
             
         
     def empty_piclist(self,camera_num):
         for dial_num in range(self.dial_num_list[camera_num][0]+self.dial_num_list[camera_num][1]):
             exec('self.memory_pic_%s_%s = []'%(camera_num,dial_num))
+
+    def read_coordinate(self,camera_num):
+        import re
+        xyr = []
+        with open('coordinate.ini','r') as f:
+            for lines in range(camera_num+1):
+                a = f.readline().strip('\n')
+            coordinate = list(x for x in re.split(r'[\[\]]',a) if x)
+            for i in coordinate:
+                xyr.append(list(map(int,i.split(','))))
+        return xyr
+
+    def init(self):
+        for camera_num in range(self.camera_nums):
+            #cap = cv2.VideoCapture('rtsp://admin:bhxz2017@%s:554/h264/ch1/main/av_stream'%self.ip_address[camera_num])
+            cap = cv2.VideoCapture('%s.avi'%camera_num)
+            success, frame = cap.read()
+            if success:
+                frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                if os.path.exists('coordinate.ini'):
+                    with open('coordinate.ini','r') as f:
+                        lines = len(f.readlines())
+                        if (lines == self.camera_nums):
+                            pass
+                        elif (lines >= self.camera_nums):
+                            f.close()
+                            os.remove('coordinate.ini')
+                            self.get_coordinate(camera_num,frame_gray)
+                        else :
+                            self.get_coordinate(camera_num,frame_gray)
+                else :
+                    self.get_coordinate(camera_num,frame_gray)
+                xyr = self.read_coordinate(camera_num)
+                for i in xyr:
+                    cv2.rectangle(frame,((i[0]-i[2]),(i[1]-i[2])),((i[0]+i[2]),(i[1]+i[2])),(0,255,155),5)
+                new_img = cv2.resize(frame, None, fx = 0.3, fy = 0.3)
+                cv2.imshow('Detection',new_img)
+                cv2.waitKey(0)
+            else :
+                print ("[NO.%s] @%s Can't Connect To Camera!"%(camera_num,self.ip_address[camera_num]))
+                time.sleep(30)
+                os._exit(0)
+            
         
     def get_coordinate(self,camera_num,img):
         circles_xyr = cv2.HoughCircles(img,cv2.HOUGH_GRADIENT,1,2*self.minRadius,param1=50,param2=30,minRadius=self.minRadius,maxRadius=self.maxRadius)
@@ -56,7 +100,12 @@ class Main(Universal_value):
         xyr_0 = sorted(xyr_0,key=lambda xyr_0:xyr_0[0])
         xyr_1 = sorted(xyr_1,key=lambda xyr_1:xyr_1[0])
         sorted_xyr = xyr_0 + xyr_1
-        return sorted_xyr
+        for i in sorted_xyr:
+            i = list(map(int,i))
+            with open('coordinate.ini','a') as f:
+                f.write(str(i))
+        with open('coordinate.ini','a') as f:
+            f.write('\n')
 
     def sift_match(self,img1_gray,camera_num,dial_num):
         img2 = cv2.imread(r'template\%s_%s.jpg'%(camera_num,dial_num))
@@ -79,15 +128,16 @@ class Main(Universal_value):
         
 
     def readvideo(self,camera_num):
-        #cap = cv2.VideoCapture('rtsp://admin:bhxz2017@%s:554/h264/ch1/main/av_stream'%self.ip_address[camera_num])
-        cap = cv2.VideoCapture('1.avi')
-        success,frame_video=cap.read()
-        while success:  
-            exec('self.q_readvideo_%s.put(frame_video)'%camera_num)
+        while True:
+            #cap = cv2.VideoCapture('rtsp://admin:bhxz2017@%s:554/h264/ch1/main/av_stream'%self.ip_address[camera_num])
+            cap = cv2.VideoCapture('%s.avi'%camera_num)
             success,frame_video=cap.read()
-            #print ("VideoToPicture: ",self.q_readvideo_0.qsize())
-            #cv2.imshow('VideoToPicture',frame_video)
-            #cv2.waitKey(1)
+            while success:  
+                exec('self.q_readvideo_%s.put(frame_video)'%camera_num)
+                success,frame_video=cap.read()
+                #print ("VideoToPicture: ",self.q_readvideo_0.qsize())
+                #cv2.imshow('VideoToPicture',frame_video)
+                #cv2.waitKey(1)
 
     def dail_pic_to_memory(self,xyr,img,camera_num,padding = 10):
         n = 0
@@ -123,18 +173,25 @@ class Main(Universal_value):
             time.sleep(0.1)
         frame = eval('self.q_readvideo_%s.get()'%camera_num)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        exec('self.xyr_%s = self.get_coordinate(camera_num,frame)'%camera_num)
+        exec('self.xyr_%s = self.read_coordinate(camera_num)'%camera_num)
         #exec('self.xyr_%s = [[600,500,190],[1200,550,168],[1600,600,150],[1800,550,150]]'%camera_num)
         print ('Camera %s, Init ok!!!'%camera_num)
         while True:
             xyr = eval('self.xyr_%s'%camera_num)
             self.dail_pic_to_memory(xyr,frame,camera_num)
             frame = eval('self.q_readvideo_%s.get()'%camera_num)
-            #print ('agsha',self.q_readvideo_0.qsize())
             try:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             except:
                 print ('error!')
+
+    def all_camera(self):
+        if self.Initialization:
+            self.init()
+        for camera_num in range(self.camera_nums):
+            multiprocessing.Process(target=self.video_image,args = (camera_num,)).start()
+
+            
 
     def save_result_db(self,data):
         conn = pymysql.connect(user='root', passwd='941120', db='bhxz')
@@ -152,39 +209,45 @@ class Main(Universal_value):
         conn.commit()
         conn.close()
 
-    def send_socket():
-        s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        s.connect(('127.0.0.1',8001))
-        s.send('hello')
-        
-
-    def all_camera(self):
-        for camera_num in range(self.camera_nums):
-            multiprocessing.Process(target=self.video_image,args = (camera_num,)).start()
-
+    def send_socket(self):
+        import socket
+        import json
+        server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        server.bind(('127.0.0.1', 5000))
+        server.listen(5)
+        while True:
+            print ('Waiting for Connection......')
+            con, address = server.accept()
+            #print ('Connected by %s!'%address)
+            while True:
+                all_camera_datas = self.q_result_socket_db.get()
+                send_data = json.dumps(all_camera_datas)
+                try:
+                    con.send(send_data.encode())
+                    time.sleep(1)
+                except:
+                    break
+     
+                     
     def error_data(self,result_datas):
         n = 0
         for i in result_datas:
             try:
                 if abs(result_datas[n+1]-result_datas[n]) > 2:
                     #result_datas = np.delete(result_datas,n+1)
-                    result_datas[n+1] = result_datas[n]
-                    print(result_datas[n])
+                    result_datas[n+1] = int(result_datas[n])
                 else:
-                    n += 1
+                    pass
+                n += 1
             except:
-                print ('+++++++++++++++')
                 pass
         return result_datas
 
     def tensorflow_gpu(self):
-        import json
-        import socket
         #from test_googlenet import gnet
         from lib.Alexnet import model2
         model = model2()
-        s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-        s.connect(('127.0.0.1',8001))
+        #multiprocessing.Process(target= (self.send_socket), args = ()).start()
         while True:
             #print ("Camera %s:"%camera_num,eval('self.q_pic_%s.qsize()'%camera_num))
             all_camera_datas = {}
@@ -202,15 +265,15 @@ class Main(Universal_value):
                         result_datas = self.error_data(result_datas)
                         name = '%s-%s'%(camera_num,dial_num)
                         all_camera_datas[name] = str(result_datas).strip('[]')
-            send_data = json.dumps(all_camera_datas)
-            s.send(send_data.encode())
-            #self.save_result_db(all_camera_datas)
+            self.save_result_db(all_camera_datas)
+            self.q_result_socket_db.put(all_camera_datas)
           
        
 if __name__ == '__main__':
     start = Main()
     p_pic = multiprocessing.Process(target=start.tensorflow_gpu)
     p_pic.start()
+    time.sleep(30)
     start.all_camera()
 
 

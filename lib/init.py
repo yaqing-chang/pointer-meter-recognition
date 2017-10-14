@@ -13,7 +13,9 @@ class Universal_value():
         self.class_num = config.label_size
         self.batch_size = config.batch_size
         self.ip_address = config.device_ip
+        self.ip_remote = config.remote_ip
         self.dial_num_list = config.dial_num_list
         self.camera_nums = len(self.ip_address)
+        self.Initialization = config.init
         
 
