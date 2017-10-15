@@ -73,7 +73,7 @@ class Main(Universal_value):
             success, frame = cap.read()
             if success:
                 frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                cv2.imwrite('1.jpg',frame)
+                cv2.imwrite('%s.jpg'%camera_num,frame)
                 if os.path.exists('coordinate.ini'):
                     with open('coordinate.ini','r') as f:
                         lines = len(f.readlines())
@@ -156,9 +156,10 @@ class Main(Universal_value):
            
             if self.itera%50  == 0:
                 match_point = len(self.sift_match(new_img,camera_num,n))
-                
-                if match_point >= 35:
+                if match_point >= 40:
                     print ('Match Point (%s-%s): %s'%(camera_num,n,match_point))
+                    exec('self.temp_%s_%s = new_img'%(camera_num,n))
+                    exec('self.temp_{0}_{1} = (cv2.resize(self.temp_{0}_{1},self.pic_size)/255.0).reshape((self.pic_size[0],self.pic_size[0],1))'.format(camera_num,n))
                     exec('self.match_%s_%s = True'%(camera_num,n))
                 else:
                     print("      Can't Matct (%s-%s): %s"%(camera_num,n,match_point))
@@ -166,6 +167,8 @@ class Main(Universal_value):
             if eval('self.match_%s_%s == True'%(camera_num,n)):
                 new_img = (cv2.resize(new_img,self.pic_size)/255.0).reshape((self.pic_size[0],self.pic_size[0],1))
                 exec("self.memory_pic_%s_%s.append(new_img)"%(camera_num,n))
+            else:
+                exec("self.memory_pic_{0}_{1}.append(self.temp_{0}_{1})".format(camera_num,n))
             n += 1
 
         if self.itera == self.batch_size:
@@ -288,8 +291,7 @@ class Main(Universal_value):
                 self.save_result_db(all_camera_datas)
                 self.q_result_socket_db.put(all_camera_datas)
             if self.q_result_socket_db.full():
-                self.q_result_socket_db.get()
-                
+                self.q_result_socket_db.get()                
        
 if __name__ == '__main__':
     start = Main()
