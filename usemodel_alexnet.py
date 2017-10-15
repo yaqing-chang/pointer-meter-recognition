@@ -63,7 +63,6 @@ class Main(Universal_value):
                 m = m[0]  
                 mkp1.append( kp1[m.queryIdx] )  
         p1 = np.float32([kp.pt for kp in mkp1])  
-        #print ('match point num:',len(p1))
         return p1
 
     
@@ -89,14 +88,18 @@ class Main(Universal_value):
                 else :
                     self.get_coordinate(camera_num,frame_gray)
                 xyr = self.read_coordinate(camera_num)
+                n = 0
                 for i in xyr:
                     cv2.rectangle(frame,((i[0]-i[2]),(i[1]-i[2])),((i[0]+i[2]),(i[1]+i[2])),(0,255,155),5)
-                new_img = cv2.resize(frame, None, fx = 0.3, fy = 0.3)
-                cv2.imshow('Detection',new_img)
+                    template_img = cv2.resize(frame_gray[(i[1]-i[2]):(i[1]+i[2]),(i[0]-i[2]):(i[0]+i[2])],(224,224))
+                    cv2.imwrite('template\%s_%s.jpg'%(camera_num,n),template_img)
+                    n += 1
+                show_img = cv2.resize(frame, None, fx = 0.3, fy = 0.3)
+                cv2.imshow('Detection',show_img)
                 cv2.waitKey(0)
             else :
                 print ("[NO.%s] @%s Can't Connect To Camera!"%(camera_num,self.ip_address[camera_num]))
-                time.sleep(30)
+                time.sleep(20)
                 os._exit(0)
 
 
@@ -144,19 +147,21 @@ class Main(Universal_value):
             #cv2.imshow('VideoToPicture',frame_video)
             #cv2.waitKey(1)
 
-    def dail_pic_to_memory(self,xyr,img,camera_num,padding = 10):
+    def dail_pic_to_memory(self,xyr,img,camera_num):
         n = 0
         for i in xyr:
             i = list(map(int,i))
-            new_img = img[(i[1]-i[2])-padding:(i[1]+i[2])+padding,(i[0]-i[2])-padding:(i[0]+i[2])+padding]
+            new_img = img[(i[1]-i[2]):(i[1]+i[2]),(i[0]-i[2]):(i[0]+i[2])]
             #cv2.imwrite('%s_%s.jpg'%(camera_num,n),new_img)
-            if self.itera == 0 or self.itera == 50:
+           
+            if self.itera%50  == 0:
                 match_point = len(self.sift_match(new_img,camera_num,n))
-                if match_point >= 0:
-                    #print ('Match Point (%s-%s): %s'%(camera_num,n,match_point))
+                
+                if match_point >= 35:
+                    print ('Match Point (%s-%s): %s'%(camera_num,n,match_point))
                     exec('self.match_%s_%s = True'%(camera_num,n))
                 else:
-                    #print("      Can't Matct (%s-%s): %s"%(camera_num,n,match_point))
+                    print("      Can't Matct (%s-%s): %s"%(camera_num,n,match_point))
                     exec('self.match_%s_%s = False'%(camera_num,n))
             if eval('self.match_%s_%s == True'%(camera_num,n)):
                 new_img = (cv2.resize(new_img,self.pic_size)/255.0).reshape((self.pic_size[0],self.pic_size[0],1))
@@ -176,7 +181,7 @@ class Main(Universal_value):
         p_video.start()
         while eval('self.q_readvideo_%s.empty()'%camera_num):
             time.sleep(0.1)
-        print ('Camera %s, Init ok!!!'%camera_num)
+        print ('Camera %s, Init ok!!!'%(camera_num+1))
         frame = eval('self.q_readvideo_%s.get()'%camera_num)
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         exec('self.xyr_%s = self.read_coordinate(camera_num)'%camera_num)
@@ -185,7 +190,6 @@ class Main(Universal_value):
             xyr = eval('self.xyr_%s'%camera_num)
             self.dail_pic_to_memory(xyr,frame,camera_num)
             frame = eval('self.q_readvideo_%s.get()'%camera_num)
-            #print ('agsha',self.q_readvideo_0.qsize())
             try:
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             except:
@@ -197,11 +201,10 @@ class Main(Universal_value):
             self.init()
         for camera_num in range(self.camera_nums):
             multiprocessing.Process(target=self.video_image,args = (camera_num,)).start()
-
             
 
     def save_result_db(self,data):
-        conn = pymysql.connect(user='root', passwd='bhxz2017', db='bhxz')
+        conn = pymysql.connect(user='root', passwd='941120', db='bhxz')
         cursor = conn.cursor()
         '''
         sql = 'CREATE TABLE result (%s, %s, %s)'
@@ -245,9 +248,9 @@ class Main(Universal_value):
                 if abs(result_datas[n+1]-result_datas[n]) > 2:
                     #result_datas = np.delete(result_datas,n+1)
                     result_datas[n+1] = int(result_datas[n])
-                n += 1
             except:
                 pass
+            n += 1
         return result_datas
 
     def tensorflow_gpu(self):
@@ -277,15 +280,16 @@ class Main(Universal_value):
                     else:
                         #result_datas = gnet.predict_label(value)
                         result_datas = model.use_model(value,dial_num)
-                        #print(result_datas)
+                        print(result_datas)
                         result_datas = self.error_data(result_datas)
                         name = '%s-%s'%(camera_num,dial_num)
                         all_camera_datas[name] = str(result_datas).strip('[]')
-            self.save_result_db(all_camera_datas)
+            if len(all_camera_datas) > 1:
+                self.save_result_db(all_camera_datas)
+                self.q_result_socket_db.put(all_camera_datas)
             if self.q_result_socket_db.full():
                 self.q_result_socket_db.get()
-            self.q_result_socket_db.put(all_camera_datas)
-          
+                
        
 if __name__ == '__main__':
     start = Main()
