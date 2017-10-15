@@ -168,7 +168,7 @@ class Main(Universal_value):
             for dial_num in range(self.dial_num_list[camera_num][0]+self.dial_num_list[camera_num][1]):
                 exec("self.q_pic_%s.put(self.memory_pic_%s_%s)"%(camera_num,camera_num,dial_num))
             self.empty_piclist(camera_num)
-            print ("Camera %s:"%camera_num,eval('self.q_pic_%s.qsize()'%camera_num))
+            #print ("Camera %s:"%camera_num,eval('self.q_pic_%s.qsize()'%camera_num))
         self.itera += 1
             
     def video_image(self,camera_num):
@@ -201,7 +201,7 @@ class Main(Universal_value):
             
 
     def save_result_db(self,data):
-        conn = pymysql.connect(user='root', passwd='941120', db='bhxz')
+        conn = pymysql.connect(user='root', passwd='bhxz2017', db='bhxz')
         cursor = conn.cursor()
         '''
         sql = 'CREATE TABLE result (%s, %s, %s)'
@@ -256,19 +256,28 @@ class Main(Universal_value):
         model = model2()
         multiprocessing.Process(target= (self.send_socket), args = ()).start()
         while True:
-            #print ("Camera %s:"%camera_num,eval('self.q_pic_%s.qsize()'%camera_num))
             all_camera_datas = {}
             now_time = time.time()
             all_camera_datas['time'] = round(now_time,3)
             for camera_num in range(self.camera_nums):
+                qsizes = eval('self.q_pic_%s.qsize()'%camera_num)
+                if qsizes == 0:
+                    print ('[N0.%s] Waiting data....'%(camera_num+1))
+                    time.sleep(3)
+                    continue
+                else:
+                    print ('[N0.%s] %s'%(camera_num+1,qsizes))
                 for dial_num in range(self.dial_num_list[camera_num][0]+self.dial_num_list[camera_num][1]):
-                    value = eval('self.q_pic_%s.get(True)'%(camera_num))
+                    try:
+                        value = eval('self.q_pic_%s.get(True,0.5)'%(camera_num))
+                    except:
+                        continue
                     if len(value) == 0:
                         print ('No data for model, %s-%s！'%(camera_num,dial_num))
                     else:
                         #result_datas = gnet.predict_label(value)
                         result_datas = model.use_model(value,dial_num)
-                        print(result_datas)
+                        #print(result_datas)
                         result_datas = self.error_data(result_datas)
                         name = '%s-%s'%(camera_num,dial_num)
                         all_camera_datas[name] = str(result_datas).strip('[]')
