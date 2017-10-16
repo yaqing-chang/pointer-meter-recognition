@@ -574,7 +574,7 @@ def image_dirs_to_samples(dirname, label_size, resize=None, convert_gray=None, f
             X = X.reshape((np.shape(Y)[0],resize,resize,3))
         if categorical_Y:
             Y = to_categorical(Y, label_size) # First class is '0'
-        fname = "images/%s/samples_%i.pkl.gz" % (dirname, fptr)
+        fname = "dataset/%s/samples_%i.pkl.gz" % (dirname, fptr)
         pickle.dump((X, Y), gzip.open(fname, 'wb'))
         print("dumped samples shape %s, %s in %s @ %s" % (np.shape(X), np.shape(Y), fname, datetime.now()))
         return fname
@@ -583,7 +583,7 @@ def image_dirs_to_samples(dirname, label_size, resize=None, convert_gray=None, f
     print("Starting to parse images...")
     if filetypes:
         if filetypes not in [list, tuple]: filetypes = list(filetypes)
-    directory = "images/%s/jpg/" % dirname
+    directory = "dataset/%s/AllInOne/" % dirname
     raw_samples, raw_targets = directory_to_samples(directory, flags=filetypes, down_sampling=down_sampling)
     if shuffle_data:
         raw_samples, raw_targets = shuffle(raw_samples, raw_targets)
@@ -613,7 +613,7 @@ def image_dirs_to_samples(dirname, label_size, resize=None, convert_gray=None, f
         samples.append(img)
         targets.append(t)
         i += 1
-        if (i % 1200 == 0):
+        if (i % 5000 == 0):
             #samples = [samples]
             #samples = samples.reshape((500,164,164,1))
             print("%i img loaded @ %s" % (i, datetime.now()))

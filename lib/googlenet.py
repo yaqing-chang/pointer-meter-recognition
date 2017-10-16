@@ -213,9 +213,9 @@ class GoogLeNet(object):
         return self.session.run(self.output, feed_dict={self.input: X})
 
 
-    def get_data(self, dirname='17flowers', resize_pics=(224, 224), down_sampling=None):
+    def get_data(self, dirname='template', resize_pics=(224, 224), down_sampling=None):
         resize_pics = self.img_size
-        pkl_fnames = ["images/%s/%s" % (dirname, f) for f in os.listdir("images/%s/" % dirname) if "samples_" in f]
+        pkl_fnames = ["dataset/%s/%s" % (dirname, f) for f in os.listdir("dataset/%s/" % dirname) if "samples_" in f]
         if not pkl_fnames:
             pkl_fnames = data_util.image_dirs_to_samples(dirname, self.label_size,
                 resize=resize_pics, convert_gray=True, filetypes=['.jpg', '.jpeg'], 

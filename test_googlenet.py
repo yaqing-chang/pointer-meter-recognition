@@ -1,43 +1,30 @@
-# coding: utf-8
-import numpy as np
-import time
-
-from PIL import Image
+from __future__ import division, print_function, absolute_import
 
 from lib import data_util
 from lib.config import params_setup
 from lib.googlenet import GoogLeNet
+from datetime import datetime
 
-# model
+import pickle, gzip
+import numpy as np
+import tflearn.datasets.oxflower17 as oxflower17
+
+
+#-------------------------------
+#   Training
+#-------------------------------
 # scope_name, label_size = '17flowers', 17
 # scope_name, label_size = '17portraits', 9
 args = params_setup()
-gnet = GoogLeNet(args=args)
+gnet = GoogLeNet(args=args) #img_size=227,  label_size=label_size, gpu_memory_fraction=0.4, scope_name=scope_name)
+pkl_files = gnet.get_data(dirname=args.model_name, down_sampling=args.down_sampling)
 
-
-#---------------------------
-#   Server
-#---------------------------
-def guess():
-    img = Image.open(r'.\images\17flowers\jpg\15\0001.jpg')
-    img = img.resize((224,224), Image.ANTIALIAS).convert('L')
-    #img = img.resize((164,164), Image.ANTIALIAS)
-    #img.show()
-    img = np.asarray(img, dtype="float32")
-    img = img.reshape((224,224,1))
-    img /= 255.0
-    a = time.clock()
-    imgs = []
-    for i in range(100):
-        imgs.append(img)
-    b = time.clock()
-    probs = gnet.predict_label(imgs)
-    #print (time.clock()-b)
-    print (probs)
-
-if __name__ == '__main__':
-    aa = time.clock()
-    for i in range(20):
-        guess()
-    print (time.clock() - aa)
-
+epoch = 0
+while True:
+    for f in pkl_files:
+        X, Y = pickle.load(gzip.open(f, 'rb'))
+        gnet.fit(X, Y, n_epoch=1)
+        print('[pkl_files] done with %s @ %s' % (f, datetime.now()))
+    epoch += 1
+    print("[Finish] all pkl_files been trained %i times." % epoch)
+    
