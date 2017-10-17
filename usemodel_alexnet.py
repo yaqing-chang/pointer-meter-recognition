@@ -199,9 +199,6 @@ class Main(Universal_value):
                 print ('error!')
 
     def all_camera(self):
-        #if self.Initialization:
-        if True:
-            self.init()
         for camera_num in range(self.camera_nums):
             multiprocessing.Process(target=self.video_image,args = (camera_num,)).start()
             
@@ -209,14 +206,15 @@ class Main(Universal_value):
     def save_result_db(self,data):
         conn = pymysql.connect(user='root', passwd='941120', db='bhxz')
         cursor = conn.cursor()
-        '''
-        sql = 'CREATE TABLE result (%s, %s, %s)'
-        cursor.executemany(sql, data) 
-        conn.commit()
-        '''
+        last_time = time.strftime("%Y%m%d", time.localtime(int(data['time'])))
+        now_time = time.strftime("%Y%m%d", time.localtime())
+        if now_time > last_time:
+            sql = 'CREATE TABLE data{} (time double(13,3), name varchar(5), data varchar(3000))'.format(last_time)
+            cursor.execute(sql) 
+            conn.commit()
         times = data['time']
         data.pop('time')
-        sql = 'INSERT INTO test VALUES (%s, %s, %s)'
+        sql = 'INSERT INTO data{} VALUES (%s, %s, %s)'.format(last_time)
         datas = [(times,y,data[y]) for y in data]
         cursor.executemany(sql, datas) 
         conn.commit()
@@ -282,7 +280,7 @@ class Main(Universal_value):
                         print ('No data for model, %s-%s！'%(camera_num,dial_num))
                     else:
                         #result_datas = gnet.predict_label(value)
-                        result_datas = model.use_model(value,dial_num)
+                        result_datas = model.use_model(value, camera_num, dial_num)
                         print(result_datas)
                         result_datas = self.error_data(result_datas)
                         name = '%s-%s'%(camera_num,dial_num)
@@ -295,8 +293,11 @@ class Main(Universal_value):
        
 if __name__ == '__main__':
     start = Main()
+    if start.Initialization:
+        start.init()
     p_pic = multiprocessing.Process(target=start.tensorflow_gpu)
     p_pic.start()
+    time.sleep(10)
     start.all_camera()
 
 

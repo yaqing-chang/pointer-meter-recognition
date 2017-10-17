@@ -18,6 +18,10 @@ from . import readdata
 
 Universal_value = init.Universal_value
 
+match_model_map = {'0-0':1,'0-1':1,'0-2':1,'0-3':1,'0-4':1,'0-5':1,'0-6':1,'0-7':1}
+    
+
+
 class model(Universal_value):
     def __init__(self,
                  input_img_size=(192,192),
@@ -115,8 +119,9 @@ class model(Universal_value):
             results +=result
         return results/float((i+1))
 
-    def use_model(self,img,dial_type = 0):
+    def use_model(self,img,camera_num, dial_type = 0):
         #self.data = time.strftime("%m-%d", time.localtime())
+        dial_type = match_model_map['{}-{}'.format(camera_num, dial_type)]
         try:
             self.saver.restore(self.sess, r'.\param\Alexnet\%s\data.ckpt'%dial_type)
         except:
@@ -250,8 +255,9 @@ class model2(Universal_value):
             results +=result
         return results/float((i+1))
 
-    def use_model(self,img,dial_type = 0):
+    def use_model(self,img,camera_num, dial_type = 0):
         #self.data = time.strftime("%m-%d", time.localtime())
+        dial_type = match_model_map['{}-{}'.format(camera_num, dial_type)]
         try:
             self.saver.restore(self.sess, r'.\param\Alexnet\%s\data.ckpt'%dial_type)
         except:
