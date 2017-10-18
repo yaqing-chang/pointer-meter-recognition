@@ -176,6 +176,7 @@ class GoogLeNet(object):
         self.session.run(init)
         try:
             self.saver.restore(self.session, '.\param\GoogLenet\model_save.model')
+            self.model.load('model_save.model')
         except:
             pass
         self.output = tf.argmax(self.network,1)

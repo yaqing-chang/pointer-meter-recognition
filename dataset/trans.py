@@ -21,13 +21,13 @@ def copy_file(dial_num,class_dial,pic_name):
     pic_num = len(os.listdir(r'template\AllInOne\{}'.format(class_dial)))
     shutil.copy(r'template\{0}\{1}\{2}'.format(dial_num,class_dial,pic_name),'template\AllInOne\{0}\{1}.jpg'.format(class_dial,pic_num))
 
-def onetype_propic(template_num):
-    class_num = len(os.listdir('template\AllInOne'))
+def onetype_propic(template_num,name):
+    class_num = len(os.listdir('template\%s'%name))
     for class_index in range(class_num):
-        nums = len(os.listdir('template\AllInOne\{}'.format(class_index)))
+        nums = len(os.listdir('template\{}\{}'.format(name, class_index)))
         for j in range(template_num-nums):
             randomnum = np.random.randint(0,nums)
-            image = cv2.imread(r'template\AllInOne\%d\%d.jpg'%(class_index,randomnum))
+            image = cv2.imread(r'template\%s\%d\%d.jpg'%(name, class_index, randomnum))
             width = image.shape[0]
             height = image.shape[1]
             lightnum = 30
@@ -47,11 +47,13 @@ def onetype_propic(template_num):
                     a = 5
                 b = np.random.randint(0,2)
                 img = cv2.GaussianBlur(img, (a, a), b);
-            cv2.imwrite(r'template\AllInOne\%d\%d.jpg'%(class_index,nums+j),img)
+            cv2.imwrite(r'template\%s\%d\%d.jpg'%(name, class_index, nums+j),img)
 
     
 all_file = os.listdir('template')
 for dial_num in [i for i in all_file if re.match(r'\d',i)]:
+    onetype_propic(20,dial_num)
+    print ('Dial %s generate well!'%dial_num)
     class_dial = os.listdir(r'template\{}'.format(dial_num))
     for class_dial in [j for j in class_dial if re.match(r'\d',j)]:
         if os.path.exists(r'template\{0}\{1}'.format(dial_num,class_dial)):
@@ -60,10 +62,10 @@ for dial_num in [i for i in all_file if re.match(r'\d',i)]:
                 copy_file(dial_num,class_dial,pic_name)
         else:
             pass
-
+'''
 if __name__ == '__main__':        
     onetype_propic(100)
 
-
+'''
 
     
